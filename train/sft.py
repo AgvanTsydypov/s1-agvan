@@ -11,11 +11,13 @@ import trl
 
 @dataclass
 class TrainingConfig:
-    model_name: str = field(default="Qwen/Qwen2.5-32B-Instruct")
-    block_size: int = field(default=32768)
+    model_name: str = field(default="deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B")
+    block_size: int = field(default=4096)
     wandb_project: Optional[str] = field(default="s1")
     wandb_entity: Optional[str] = field(default="hashimoto-group")
-    train_file_path: Optional[str] = field(default='simplescaling/s1K_tokenized')
+    # train_file_path: Optional[str] = field(default='simplescaling/s1K_tokenized')
+    train_file_path: str = field(default="data/train_finetune.jsonl")
+    validation_split_percentage: int = field(default=15)
     dagger: bool = field(default=False)
 
     def __post_init__(self):
@@ -25,9 +27,20 @@ class TrainingConfig:
 def train():
     # parsing input
     parser = transformers.HfArgumentParser((TrainingConfig, trl.SFTConfig))
-    config, args = parser.parse_args_into_dataclasses()
-    log_config = {**asdict(config), **asdict(args)}
+    config, sft_args = parser.parse_args_into_dataclasses()
+    log_config = {**asdict(config), **asdict(sft_args)}
     logging.info(f"Training config: {log_config}")
+
+    raw_dataset = load_dataset("json", data_files={"train": config.train_file_path},)["train"]
+    
+    split = raw_dataset.train_test_split(
+    test_size=config.validation_split_percentage / 100.0,
+    seed=sft_args.seed)
+
+    dataset = DatasetDict({
+        "train": split["train"],
+        "validation": split["test"]
+    })
 
     # loading model
     kwargs = {}
@@ -40,7 +53,6 @@ def train():
     else:
         model = transformers.AutoModelForCausalLM.from_pretrained(config.model_name)
 
-    dataset = load_dataset(config.train_file_path)
 
     # setting up trainer
     tokenizer = transformers.AutoTokenizer.from_pretrained(config.model_name, use_fast=True)
@@ -64,19 +76,29 @@ def train():
         tokenizer=tokenizer,
         mlm=False
     )
-    args.dataset_text_field = 'text'
-    args.max_seq_length = config.block_size
+    sft_args.dataset_text_field = 'text'
+    sft_args.max_seq_length = config.block_size
+
+    def tokenize_fn(examples):
+        return tokenizer(
+            examples[sft_args.dataset_text_field],
+            truncation=True,
+            max_length=config.block_size
+        )
+    
+    tokenized_ds = dataset.map(tokenize_fn, batched=True)
+
     trainer = trl.SFTTrainer(
         model,
-        train_dataset=dataset['train'],
-        eval_dataset=dataset['test'] if 'test' in dataset else dataset['train'],
-        args=args,
+        train_dataset=tokenized_ds["train"],
+        eval_dataset=tokenized_ds["validation"],
+        args=sft_args,
         data_collator=collator
     )
 
     trainer.train()
-    trainer.save_model(output_dir=args.output_dir)
-    tokenizer.save_pretrained(args.output_dir)
+    trainer.save_model(output_dir=sft_args.output_dir)
+    tokenizer.save_pretrained(sft_args.output_dir)
     trainer.accelerator.wait_for_everyone()
 
 
