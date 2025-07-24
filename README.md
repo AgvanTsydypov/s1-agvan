@@ -206,8 +206,7 @@ response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
 To run training, you can find our script at `train/sft.py` which you can invoke via one of the `train/sft*sh` scripts which in turn you can launch via `train/launch.sh` if you are on a SLURM cluster (requires editing the file for your cluster setup).
 
-To train s1-32B/s1.1-32B, we recommend 16 H100 GPUs i.e. 2 nodes with 8 each. For s1.1, we set the block size to 20000 to avoid OOM (https://github.com/simplescaling/s1/blob/0ad4b3de32507b4aa0d4be28f336276ee99b2315/train/sft.sh#L17); Check the wandb logs [here](https://wandb.ai/hashimoto-group/o1/runs/m1ilia77/overview).
-
+To train s1-32B/s1.1-32B, we recommend 16 H100 GPUs i.e. 2 nodes with 8 each. For s1.1, we set the block size to 20000 to avoid OOM (https://github.com/simplescaling/s1/blob/0ad4b3de32507b4aa0d4be28f336276ee99b2315/train/sft.sh#L17);
 Quick start:
 ```
 git clone https://github.com/simplescaling/s1.git

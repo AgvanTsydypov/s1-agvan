@@ -20,10 +20,6 @@ class TrainingConfig:
     validation_split_percentage: int = field(default=15)
     dagger: bool = field(default=False)
 
-    def __post_init__(self):
-        os.environ['WANDB_PROJECT'] = self.wandb_project
-        os.environ['WANDB_ENTITY'] = self.wandb_entity
-
 def train():
     # parsing input
     parser = transformers.HfArgumentParser((TrainingConfig, trl.SFTConfig))
