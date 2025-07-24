@@ -1,4 +1,8 @@
 import os
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["HF_DATASETS_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+
 from dataclasses import dataclass, field, asdict
 from typing import Optional
 import warnings
@@ -11,10 +15,10 @@ import trl
 
 @dataclass
 class TrainingConfig:
-    model_name: str = field(default="deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B")
+    model_name: str = field(default="/home/agvanu/models/DeepSeek-R1-Distill-Qwen-1.5B")
     block_size: int = field(default=4096)
-    wandb_project: Optional[str] = field(default="s1")
-    wandb_entity: Optional[str] = field(default="hashimoto-group")
+    # wandb_project: Optional[str] = field(default="s1")
+    # wandb_entity: Optional[str] = field(default="hashimoto-group")
     # train_file_path: Optional[str] = field(default='simplescaling/s1K_tokenized')
     train_file_path: str = field(default="data/train_finetune.jsonl")
     validation_split_percentage: int = field(default=15)
@@ -47,11 +51,17 @@ def train():
                   "attn_implementation": "flash_attention_2", "use_cache": False}
         model = transformers.AutoModelForCausalLM.from_pretrained(config.model_name, **kwargs)
     else:
-        model = transformers.AutoModelForCausalLM.from_pretrained(config.model_name)
+        model = transformers.AutoModelForCausalLM.from_pretrained(config.model_name,
+                                                                  local_files_only=True,
+                                                                  device_map="auto",
+                                                                  torch_dtype="auto",
+                                                                  use_cache=False)
 
 
     # setting up trainer
-    tokenizer = transformers.AutoTokenizer.from_pretrained(config.model_name, use_fast=True)
+    tokenizer = transformers.AutoTokenizer.from_pretrained(config.model_name,
+                                                            use_fast=True,
+                                                            local_files_only=True)
     if "Llama" in config.model_name:
         instruction_template = "<|start_header_id|>user<|end_header_id|>"
         response_template = "<|start_header_id|>assistant<|end_header_id|>\n\n"
