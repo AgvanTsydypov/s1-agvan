@@ -53,7 +53,6 @@ def train():
     else:
         model = transformers.AutoModelForCausalLM.from_pretrained(config.model_name,
                                                                   local_files_only=True,
-                                                                  device_map="auto",
                                                                   torch_dtype="auto",
                                                                   use_cache=False)
 
