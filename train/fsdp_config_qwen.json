@@ -1,1 +1,15 @@
-{"transformer_layer_cls_to_wrap": "Qwen2DecoderLayer"}
+{
+  "transformer_layer_cls_to_wrap": ["Qwen2DecoderLayer"],
+  "sharding_strategy": "FULL_SHARD",
+  "cpu_offload": {
+    "offload_params": true
+  },
+  "mixed_precision": {
+    "enabled": true,
+    "dtype": "bfloat16"
+  },
+  "activation_checkpointing": {
+    "partition_activations": true,
+    "cpu_checkpointing": false
+  }
+}
