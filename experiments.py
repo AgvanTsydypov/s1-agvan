@@ -20,7 +20,8 @@ logging.set_verbosity_error()
 
 # Путь до локальной модели
 # base_name = "/home/agvanu/.cache/huggingface/hub/models--Qwen--Qwen1.5-0.5B/snapshots/8f445e3628f3500ee69f24e1303c9f10f5342a39"
-base_name = "/home/agvanu/Desktop/QM/T/s1/ckpt-mydata/checkpoint-6066"
+# base_name = "/home/agvanu/Desktop/QM/T/s1-qwen-0.5B/ckpts/s1-20250728_212621"
+base_name = "/home/agvanu/models/Qwen2.5-0.5B"
 # =====================
 # 1. Загрузка локальной модели
 # =====================
@@ -38,12 +39,15 @@ model.config.pad_token_id = tokenizer.eos_token_id
 # =====================
 # 2. Утилиты для генерации локально
 # =====================
-def generate_with_local_model(prompt: str, max_new_tokens: int = 256) -> str:
+def generate_with_local_model(prompt: str, max_new_tokens: int = 1024) -> str:
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, padding=True).to(device)
     outputs = model.generate(
         **inputs,
         max_new_tokens=max_new_tokens,
-        do_sample=True,
+        do_sample=False,
+        eos_token_id=tokenizer.eos_token_id,
+        early_stopping=True,
+        temperature=0.2,
         top_p=0.9
     )
     text = tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -189,7 +193,7 @@ def run_experiments_single_thread(SAFE_df, train_df, true_label, count_of_exp):
 
         for n_shot in [0,1,3,5]:
             prompt_label = generate_prompt_short(n_shot, test_text.replace('"','\"'), examples)
-            output_label = generate_with_local_model(prompt_label)
+            output_label = generate_with_local_model(prompt_label, max_new_tokens=10)
             pred = parse_prediction_label(output_label)
 
             data['EXP-Number'].append(i)
@@ -204,7 +208,7 @@ def run_experiments_single_thread(SAFE_df, train_df, true_label, count_of_exp):
 
             if pred not in ['Unknown', 'SAFE']:
                 fix_prompt = generate_prompt_fix_code(pred, test_text)
-                fixed_code = generate_with_local_model(fix_prompt, max_new_tokens=512)
+                fixed_code = generate_with_local_model(fix_prompt, max_new_tokens=2048)
             else:
                 fixed_code = 'SAFE' if pred == 'SAFE' else 'N/A'
             data['Code_after_predicted'].append(fixed_code)
@@ -261,6 +265,7 @@ if __name__ == '__main__':
     # Выбор безопасных и целевых примеров
     SAFE_df = full_df[full_df['cwe_id'] == 'SAFE']
     cwe_list = ['CWE-843','CWE-190','CWE-476','CWE-416','CWE-415','CWE-400','CWE-617','CWE-401','CWE-284','CWE-122','CWE-835']
+    # cwe_list = ['CWE-843','CWE-190']
 
     count_of_exp = 20
 
